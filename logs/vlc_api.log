@@ -109,3 +109,28 @@
 2025-04-21 20:44:21 - vlc-api - INFO - Starting VLC Player Control API on 0.0.0.0:8000
 2025-04-21 20:44:21 - vlc-api - INFO - Default VLC command: /Applications/VLC.app/Contents/MacOS/VLC --intf dummy --no-osd --fullscreen --loop --no-video-title-show --no-sub-autodetect-file --quiet --drop-late-frames --skip-frames
 2025-04-21 20:44:21 - asyncio - DEBUG - Using selector: KqueueSelector
+2025-04-21 21:11:10 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:10 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:10 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:10 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:10 - vlc-api - INFO - Starting VLC Player Control API on 0.0.0.0:8000
+2025-04-21 21:11:10 - vlc-api - INFO - Default VLC command: /Applications/VLC.app/Contents/MacOS/VLC --intf dummy --no-osd --fullscreen --loop --no-video-title-show --no-sub-autodetect-file --quiet --drop-late-frames --skip-frames
+2025-04-21 21:11:22 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:22 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:22 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:22 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:22 - vlc-api - INFO - Starting VLC Player Control API on 0.0.0.0:8000
+2025-04-21 21:11:22 - vlc-api - INFO - Default VLC command: /Applications/VLC.app/Contents/MacOS/VLC --intf dummy --no-osd --fullscreen --loop --no-video-title-show --no-sub-autodetect-file --quiet --drop-late-frames --skip-frames
+2025-04-21 21:11:40 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:40 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:40 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:11:40 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:11:40 - vlc-api - INFO - Starting VLC Player Control API on 0.0.0.0:8000
+2025-04-21 21:11:40 - vlc-api - INFO - Default VLC command: /Applications/VLC.app/Contents/MacOS/VLC --intf dummy --no-osd --fullscreen --loop --no-video-title-show --no-sub-autodetect-file --quiet --drop-late-frames --skip-frames
+2025-04-21 21:12:44 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:12:44 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:12:44 - vlc-api - INFO - Starting in development mode
+2025-04-21 21:12:44 - vlc-api - INFO - Debug mode is enabled
+2025-04-21 21:12:44 - vlc-api - INFO - Starting VLC Player Control API on 0.0.0.0:8000
+2025-04-21 21:12:44 - vlc-api - INFO - Default VLC command: /Applications/VLC.app/Contents/MacOS/VLC --intf dummy --no-osd --fullscreen --loop --no-video-title-show --no-sub-autodetect-file --quiet --drop-late-frames --skip-frames
+2025-04-21 21:12:44 - asyncio - DEBUG - Using selector: KqueueSelector
