@@ -103,7 +103,7 @@ def run_slideshow(
             label.image = photo  # Tkinter reference
             root.after(delay * 1000, update_image)
         except Exception as e:
-            logging.error(f"Error displaying image: {e}")
+            logging.error("Error displaying image: %s", e)
             traceback.print_exc()
             root.destroy()
 
@@ -121,7 +121,7 @@ def slideshow(
         logging.info("Found %d images in directory: %s", len(image_paths), image_dir)
         run_slideshow(image_paths, delay, bg_color)
     except FileNotFoundError:
-        logging.error(f"Directory not found: {image_dir}")
+        logging.error("Directory not found: %s", image_dir)
         return
 
 
@@ -138,15 +138,21 @@ def parse_hex_color(hex_color: str) -> Tuple[int, int, int]:
 
 
 def main() -> None:
-    # Improved logging: log to file as well as console
+    # Improved logging: log to file daily as well as console, keep 90 days
     log_handlers: List[logging.Handler] = [logging.StreamHandler()]
     try:
-        from logging.handlers import RotatingFileHandler
+        from logging.handlers import TimedRotatingFileHandler
 
         os.makedirs("logs", exist_ok=True)
-        file_handler = RotatingFileHandler(
-            "logs/slideshow.log", maxBytes=5 * 1024 * 1024, backupCount=2
+        file_handler = TimedRotatingFileHandler(
+            "logs/slideshow.log",
+            when="midnight",
+            interval=1,
+            backupCount=90,
+            encoding="utf-8",
+            utc=False,
         )
+        file_handler.suffix = "%Y-%m-%d"
         log_handlers.append(file_handler)
     except Exception:
         pass
@@ -168,7 +174,7 @@ def main() -> None:
         try:
             bg_color = parse_hex_color(sys.argv[3])
         except Exception as e:
-            sys.exit(f"Invalid background color: {e}")
+            sys.exit("Invalid background color: %s" % e)
     else:
         bg_color = (0, 0, 0)
     try:
