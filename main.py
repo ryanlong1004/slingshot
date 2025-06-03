@@ -1,238 +1,181 @@
 """
-VLC Player Control API
+Slideshow Application
 
-A FastAPI application that provides endpoints to control VLC media player
-for fullscreen video playback.
+Usage:
+    python main.py <image_directory> [delay_seconds] [bg_color_hex]
+
+- Press Esc or 'q' to exit.
+- Optionally specify a background color as a hex string (e.g. #222222).
+- Logs to both console and logs/slideshow.log.
 """
 
-from pathlib import Path
-from typing import Dict, Optional
+import logging
+import os
+import sys
+import traceback
+from itertools import cycle
+from tkinter import Label, Tk
+from typing import List, Tuple
 
-import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field, validator
-from fastapi.middleware.cors import CORSMiddleware
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    sys.exit("Pillow is required. Install with: pip install pillow")
 
-import config
-import player
+__all__ = [
+    "TARGET_WIDTH",
+    "TARGET_HEIGHT",
+    "BACKGROUND_COLOR",
+    "IMAGE_EXTENSIONS",
+    "get_image_paths",
+    "process_image",
+    "create_slideshow_window",
+    "run_slideshow",
+    "slideshow",
+]
 
-# Configure logger
-logger = config.setup_logging()
-
-# Initialize FastAPI app
-app = FastAPI(
-    title=config.API_TITLE,
-    description=config.API_DESCRIPTION,
-    version=config.API_VERSION,
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to restrict origins in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-security = HTTPBasic()
-
-player_manager = player.VLCPlayerManager()
+# --- Constants ---
+TARGET_WIDTH = 1920
+TARGET_HEIGHT = 1020
+BACKGROUND_COLOR = (0, 0, 0)
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
 
 
-class VideoRequest(BaseModel):
-    """Request model for playing a video"""
-
-    video_path: str = Field(..., description="Path to the video file")
-    loop: bool = Field(True, description="Whether to loop the video")
-    fullscreen: bool = Field(True, description="Whether to play in fullscreen mode")
-
-    @classmethod
-    def validate_video_path(cls, value):
-        if not Path(value).is_file():
-            raise ValueError(f"Video file does not exist: {value}")
-        return value
+def get_image_paths(image_dir: str) -> List[str]:
+    """Return a list of image file paths in the directory."""
+    return [
+        os.path.join(image_dir, f)
+        for f in os.listdir(image_dir)
+        if f.lower().endswith(IMAGE_EXTENSIONS)
+    ]
 
 
-class PlayerResponse(BaseModel):
-    """Response model for player status"""
-
-    status: player.PlayerStatus
-    video_path: Optional[str] = None
-    pid: Optional[int] = None
-    uptime: Optional[float] = None
-    error: Optional[str] = None
-
-
-@app.get("/", response_model=Dict[str, str])
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "VLC Player Control API",
-        "version": config.API_VERSION,
-        "docs": "/docs",
-    }
+def process_image(
+    path: str, size: Tuple[int, int], bg_color: Tuple[int, int, int] = (0, 0, 0)
+) -> Image.Image:
+    """Open, convert, resize, and center an image on a background."""
+    img = Image.open(path).convert("RGB")
+    img.thumbnail(size, Image.Resampling.LANCZOS)
+    background = Image.new("RGB", size, bg_color)
+    offset_x = (size[0] - img.width) // 2
+    offset_y = (size[1] - img.height) // 2
+    background.paste(img, (offset_x, offset_y))
+    return background
 
 
-@app.get("/health", status_code=status.HTTP_200_OK)
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "api_version": config.API_VERSION}
+def create_slideshow_window() -> Tuple[Tk, Label, int, int]:
+    """Create and return a fullscreen Tkinter window, image label, and screen size."""
+    root = Tk()
+    root.title("Slideshow")
+    root.attributes("-fullscreen", True)
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    label = Label(root)
+    label.pack(expand=True, fill="both")
+
+    # Bind Esc and 'q' to exit
+    def _exit(event=None):
+        root.destroy()
+
+    root.bind("<Escape>", _exit)
+    root.bind("q", _exit)
+    root.bind("Q", _exit)
+    return root, label, screen_width, screen_height
 
 
-@app.get("/player/status", response_model=PlayerResponse)
-async def get_player_status():
-    """
-    Get the current status of the VLC player
+def run_slideshow(
+    image_paths: List[str], delay: int = 3, bg_color: Tuple[int, int, int] = (0, 0, 0)
+) -> None:
+    """Run the Tkinter slideshow for the given image paths."""
+    if not image_paths:
+        logging.warning("No images found in the specified directory.")
+        return
+    root, label, screen_width, screen_height = create_slideshow_window()
+    image_cycle = cycle(image_paths)
 
-    Returns:
-        Player status information
-    """
+    def update_image() -> None:
+        try:
+            image_path = next(image_cycle)
+            logging.info("Displaying image: %s", image_path)
+            img = process_image(image_path, (screen_width, screen_height), bg_color)
+            photo = ImageTk.PhotoImage(img)
+            label.config(image=photo)
+            label.image = photo  # Tkinter reference
+            root.after(delay * 1000, update_image)
+        except Exception as e:
+            logging.error(f"Error displaying image: {e}")
+            traceback.print_exc()
+            root.destroy()
+
+    logging.info("Slideshow started in fullscreen mode.")
+    update_image()
+    root.mainloop()
+
+
+def slideshow(
+    image_dir: str, delay: int = 3, bg_color: Tuple[int, int, int] = (0, 0, 0)
+) -> None:
+    """Entry point for running the slideshow from a directory."""
     try:
-        status_value, status_info = player_manager.get_player_status()
-        return {"status": status_value, **status_info}
-    except Exception as e:
-        logger.error("Error getting player status: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get player status: {str(e)}",
-        ) from e
+        image_paths = get_image_paths(image_dir)
+        logging.info("Found %d images in directory: %s", len(image_paths), image_dir)
+        run_slideshow(image_paths, delay, bg_color)
+    except FileNotFoundError:
+        logging.error(f"Directory not found: {image_dir}")
+        return
 
 
-@app.post("/player/play", response_model=PlayerResponse)
-async def play_video(request: VideoRequest, background_tasks: BackgroundTasks):
-    """
-    Start playing a video with VLC
+def parse_hex_color(hex_color: str) -> Tuple[int, int, int]:
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) == 3:
+        hex_color = "".join([c * 2 for c in hex_color])
+    if len(hex_color) != 6 or not all(c in "0123456789abcdefABCDEF" for c in hex_color):
+        raise ValueError(f"Invalid hex color: {hex_color}")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return (r, g, b)
 
-    Args:
-        request: Video request with path and options
-        background_tasks: FastAPI background tasks
 
-    Returns:
-        Player status response
-    """
+def main() -> None:
+    # Improved logging: log to file as well as console
+    log_handlers: List[logging.Handler] = [logging.StreamHandler()]
     try:
-        # Stop any existing playback
-        if player_manager.vlc_process is not None:
-            player_manager.stop_vlc_process()
+        from logging.handlers import RotatingFileHandler
 
-        # Start new playback
-        player_manager.vlc_process = player_manager.start_vlc_process(
-            request.video_path, loop=request.loop, fullscreen=request.fullscreen
+        os.makedirs("logs", exist_ok=True)
+        file_handler = RotatingFileHandler(
+            "logs/slideshow.log", maxBytes=5 * 1024 * 1024, backupCount=2
         )
+        log_handlers.append(file_handler)
+    except Exception:
+        pass
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s: %(message)s",
+        handlers=log_handlers,
+    )
+    if len(sys.argv) < 2:
+        sys.exit(
+            "Usage: python slideshow.py <image_directory> [delay_seconds] "
+            "[bg_color_hex]"
+        )
+    image_dir = sys.argv[1]
+    delay = int(sys.argv[2]) if len(sys.argv) > 2 else 3
 
-        # Monitor the process in the background
-        player_manager.monitor_vlc_process(background_tasks)
-
-        # Get updated status
-        status_value, status_info = player_manager.get_player_status()
-
-        return {"status": status_value, **status_info}
-
-    except FileNotFoundError as e:
-        logger.error("Video file not found: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Video file not found: {str(e)}",
-        ) from e
-    except Exception as e:
-        logger.error("Unexpected error: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}",
-        ) from e
-
-
-@app.post("/player/stop", response_model=PlayerResponse)
-async def stop_video():
-    """
-    Stop the currently playing video
-
-    Returns:
-        Player status response
-    """
+    # Optional: allow background color as hex string, e.g. "#ff0000"
+    if len(sys.argv) > 3:
+        try:
+            bg_color = parse_hex_color(sys.argv[3])
+        except Exception as e:
+            sys.exit(f"Invalid background color: {e}")
+    else:
+        bg_color = (0, 0, 0)
     try:
-        # Stop the playback
-        player_manager.stop_vlc_process()
-
-        # Get updated status
-        status_value, status_info = player_manager.get_player_status()
-
-        return {"status": status_value, **status_info}
-
-    except Exception as e:
-        logger.error("Error stopping video: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        ) from e
-
-
-@app.post("/player/restart", response_model=PlayerResponse)
-async def restart_video(background_tasks: BackgroundTasks):
-    """
-    Restart the currently playing video
-
-    Returns:
-        Player status response
-    """
-    try:
-        # Check if a video is currently playing or was played
-        if not player_manager.vlc_status["video_path"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No video has been played yet",
-            )
-
-        # Store the current video path
-        video_path = player_manager.vlc_status["video_path"]
-
-        # Stop the current playback
-        player_manager.stop_vlc_process()
-
-        # Start new playback with the same video
-        player_manager.vlc_process = player_manager.start_vlc_process(video_path)
-
-        # Monitor the process in the background
-        player_manager.monitor_vlc_process(background_tasks)
-
-        # Get updated status
-        status_value, status_info = player_manager.get_player_status()
-
-        return {"status": status_value, **status_info}
-
-    except Exception as e:
-        logger.error("Error restarting video: %s", str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        ) from e
-
-
-@app.get("/secure-endpoint")
-async def secure_endpoint(credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username != "admin" or credentials.password != "password":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return {"message": "Secure access granted"}
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if player_manager.vlc_process:
-        player_manager.stop_vlc_process()
-        logger.info("VLC process terminated during shutdown.")
+        slideshow(image_dir, delay, bg_color)
+    except KeyboardInterrupt:
+        logging.info("Slideshow exited by user.")
 
 
 if __name__ == "__main__":
-    # Log startup information
-    logger.info(
-        "Starting VLC Player Control API on %s:%s", config.API_HOST, config.API_PORT
-    )
-    logger.info("Default VLC command: %s", " ".join(config.DEFAULT_VLC_COMMAND))
-
-    # Run the server
-    uvicorn.run(
-        app=app,
-        host=config.API_HOST,
-        port=config.API_PORT,
-        log_level=config.LOG_LEVEL.lower(),
-    )
+    main()
