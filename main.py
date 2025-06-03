@@ -100,9 +100,9 @@ def run_slideshow(
             img = process_image(image_path, (screen_width, screen_height), bg_color)
             photo = ImageTk.PhotoImage(img)
             label.config(image=photo)
-            label.image = photo  # Tkinter reference
+            setattr(label, "photo_ref", photo)  # Keep a reference to avoid garbage collection
             root.after(delay * 1000, update_image)
-        except Exception as e:
+        except OSError as e:
             logging.error("Error displaying image: %s", e)
             traceback.print_exc()
             root.destroy()
