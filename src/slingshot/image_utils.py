@@ -1,5 +1,5 @@
-from typing import List
 import os
+from typing import List
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
 

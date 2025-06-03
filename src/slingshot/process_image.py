@@ -1,5 +1,6 @@
-from PIL import Image
 from typing import Tuple
+
+from PIL import Image
 
 
 def process_image(

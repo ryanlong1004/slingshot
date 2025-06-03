@@ -1,9 +1,11 @@
-from itertools import cycle
 import logging
 import traceback
+from itertools import cycle
 from tkinter import Label, Tk
 from typing import List, Tuple
+
 from PIL import ImageTk
+
 from .process_image import process_image
 
 
